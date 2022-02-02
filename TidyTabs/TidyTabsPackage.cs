@@ -31,15 +31,15 @@ namespace DaveMcKeown.TidyTabs
     ///     The main Visual Studio package for the Tidy Tabs extension
     /// </summary>
     [ProvideOptionPage(typeof(TidyTabsOptionPage), "Tidy Tabs", "Options", 1000, 1001, false)]
-    [PackageRegistration(UseManagedResourcesOnly = true)]
+    [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
+    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExistsAndFullyLoaded_string, PackageAutoLoadFlags.BackgroundLoad)]
     [InstalledProductRegistration("#110", "#112", Version, IconResourceID = 400)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
-    [ProvideAutoLoad(UIContextGuids80.SolutionExists)]
     [Guid(GuidList.guidTidyTabsPkgString)]
     [SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1126:PrefixCallsCorrectly", Justification = "Reviewed")]
-    public sealed class TidyTabsPackage : Package, IVsBroadcastMessageEvents, IDisposable
+    public sealed class TidyTabsPackage : AsyncPackage, IVsBroadcastMessageEvents, IDisposable
     {
-        public const string Version = "1.10.1";
+        public const string Version = "1.20.0";
         /// <summary>
         ///     A lock object for document purge operations
         /// </summary>
@@ -177,7 +177,6 @@ namespace DaveMcKeown.TidyTabs
                 if (lastAction != DateTime.MinValue)
                 {
                     var idleTime = DateTime.Now - lastAction;
-
                     foreach (var windowTimePair in documentLastSeen)
                     {
                         UpdateWindowTimestamp(windowTimePair.Key, windowTimePair.Value.Add(idleTime));
@@ -194,15 +193,19 @@ namespace DaveMcKeown.TidyTabs
         ///     Initialization of the package; this method is called right after the package is sited, so this is the place
         ///     where you can put all the initialization code that rely on services provided by VisualStudio.
         /// </summary>
-        protected override void Initialize()
+        protected override async Task InitializeAsync(System.Threading.CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
-            base.Initialize();
+            await base.InitializeAsync(cancellationToken, progress);
+
+            // Switch to main thread
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
             try
             {
                 if (VisualStudio.Solution != null)
                 {
                     Log.Message("Starting Tidy Tabs inside Visual Studio {0} {1} for solution {2}", VisualStudio.Edition, VisualStudio.Version, VisualStudio.Solution.FullName);
+                    SolutionEventsOnOpened();
                 }
 
                 windowEvents = VisualStudio.Events.WindowEvents;
@@ -214,6 +217,7 @@ namespace DaveMcKeown.TidyTabs
                 windowEvents.WindowActivated += WindowEventsWindowActivated;
                 documentEvents.DocumentClosing += DocumentEventsOnDocumentClosing;
                 documentEvents.DocumentSaved += DocumentEventsOnDocumentSaved;
+                documentEvents.DocumentOpened += DocumentEventsOnDocumentOpened;
                 textEditorEvents.LineChanged += TextEditorEventsOnLineChanged;
                 solutionEvents.Opened += SolutionEventsOnOpened;
                 buildEvents.OnBuildBegin += BuildEventsOnOnBuildBegin;
@@ -238,6 +242,8 @@ namespace DaveMcKeown.TidyTabs
             {
                 Log.Exception(ex);
             }
+
+            return;
         }
 
         /// <summary>Closes stale windows when a build is triggered</summary>
@@ -249,7 +255,7 @@ namespace DaveMcKeown.TidyTabs
             {
                 lastAction = DateTime.Now;
 
-                Task.Factory.StartNew(() => TidyTabs(true));
+                Task.Factory.StartNew(() => TidyTabs(true, false));
             }
             catch (Exception ex)
             {
@@ -260,9 +266,14 @@ namespace DaveMcKeown.TidyTabs
         /// <summary>The cleanup action for Tidy Tabs that closes stale windows and document windows beyond the max open
         ///     window threshold</summary>
         /// <param name="autoSaveTriggered">Flag that indicates if the action was triggered by a document save event</param>
-        private void TidyTabs(bool autoSaveTriggered)
+        private void TidyTabs(bool onDocumentSaved, bool onDocumentOpened)
         {
-            if (autoSaveTriggered && !Settings.PurgeStaleTabsOnSave)
+            if (onDocumentSaved && !Settings.PurgeStaleTabsOnSave)
+            {
+                return;
+            }
+
+            if (onDocumentOpened && !Settings.PurgeStaleTabsOnOpen)
             {
                 return;
             }
@@ -285,7 +296,6 @@ namespace DaveMcKeown.TidyTabs
         /// <returns>True if window was closed</returns>
         private bool CloseDocumentWindow(Window window)
         {
-
             DateTime lastWindowAction;
 
             try
@@ -401,7 +411,27 @@ namespace DaveMcKeown.TidyTabs
             try
             {
                 lastAction = DateTime.Now;
-                Task.Factory.StartNew(() => TidyTabs(true));
+                Task.Factory.StartNew(() => TidyTabs(true, false));
+            }
+            catch (Exception ex)
+            {
+                Log.Exception(ex);
+            }
+        }
+
+        /// <summary>Closes stale windows when a document is saved</summary>
+        /// <param name="document">The document being saved</param>
+        private void DocumentEventsOnDocumentOpened(Document document)
+        {
+            try
+            {
+                lastAction = DateTime.Now;
+                if (document.ActiveWindow != null)
+                {
+                    UpdateWindowTimestamp(document.ActiveWindow);
+                }
+
+                Task.Factory.StartNew(() => TidyTabs(false, true));
             }
             catch (Exception ex)
             {
@@ -445,7 +475,7 @@ namespace DaveMcKeown.TidyTabs
             {
                 Log.Message("Tidy Tabs keyboard shortcut triggered");
 
-                Task.Factory.StartNew(() => TidyTabs(false));
+                Task.Factory.StartNew(() => TidyTabs(false, false));
             }
             catch (Exception ex)
             {

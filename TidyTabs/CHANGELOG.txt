@@ -1,3 +1,9 @@
+2022-02-01 (v.1.2.0)
+* Add support for Visual Studio 2019 & 2022
+* Converted to use AsyncPackage for background loading
+* Added option to close stale tabs when a new document is opened
+* Fixed bug whereby certain open files weren't allocated a timestamp
+
 2016-12-08 (v.1.11.0)
 * Add support for Visual Studio 2017
 

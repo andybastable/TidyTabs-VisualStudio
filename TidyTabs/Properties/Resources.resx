@@ -135,6 +135,12 @@
   <data name="PurgeOnSave_DisplayName" xml:space="preserve">
     <value>Close on save</value>
   </data>
+	<data name="PurgeOnOpen_Description" xml:space="preserve">
+    <value>Controls if stale tabs should be automatically closed when opening a new document</value>
+  </data>
+	<data name="PurgeOnOpen_DisplayName" xml:space="preserve">
+    <value>Close on open</value>
+  </data>
   <data name="TabCloseThreshold_Description" xml:space="preserve">
     <value>The number tabs that must be open before inactive tabs begin to be closed by Tidy Tabs. Set to 0 to always close inactive tabs.</value>
   </data>

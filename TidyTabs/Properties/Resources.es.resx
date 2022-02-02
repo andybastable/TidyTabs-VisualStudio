@@ -135,6 +135,12 @@
   <data name="PurgeOnSave_DisplayName" xml:space="preserve">
     <value>Cierre de ahorro</value>
   </data>
+	<data name="PurgeOnOpen_Description" xml:space="preserve">
+    <value>Controls if stale tabs should be automatically closed when opening a new document</value>
+  </data>
+	<data name="PurgeOnOpen_DisplayName" xml:space="preserve">
+    <value>Close on open</value>
+  </data>
   <data name="TabCloseThreshold_Description" xml:space="preserve">
     <value>Las fichas de números que deben estar abiertos antes de las pestañas inactivas empiezan a ser cerrado por Tidy aquí. Se establece en 0 para siempre cercanos pestañas inactivas.</value>
   </data>

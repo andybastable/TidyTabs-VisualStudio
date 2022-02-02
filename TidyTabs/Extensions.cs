@@ -31,7 +31,27 @@ namespace DaveMcKeown.TidyTabs
         /// <returns>An enumerable sequence of windows</returns>
         public static IEnumerable<Window> GetDocumentWindows(this Windows windows)
         {
-            return windows.Cast<Window>().Where(x => x.Linkable == false);
+            var outList = new List<Window>();
+
+            foreach (var doc in windows.DTE.Documents.Cast<Document>())
+            {
+                if (doc != null)
+                {
+                    //Log.Message($"DTE.Documents - {doc.FullName} {doc.ActiveWindow} {doc.Windows.Count}");
+                    outList.Add(doc.ActiveWindow);
+                }
+            }
+
+            //foreach(var window in windows.Cast<Window>())
+            //{
+            //    if(window.Document != null)
+            //        Log.Message($"GetDocumentWindows - {window.Document.FullName} {window.Linkable}");
+            //    else
+            //        Log.Message($"GetDocumentWindows - NULL {window.Linkable}");
+            //}
+
+            //return windows.Cast<Window>().Where(x => (x.Document != null));
+            return outList;
         }
 
         /// <summary>Enumerates the document tabs timeout dictionary and returns the key for tabs that are inactive</summary>
@@ -39,7 +59,23 @@ namespace DaveMcKeown.TidyTabs
         /// <returns>Enumerable sequence of inactive tab keys</returns>
         public static IEnumerable<WindowTimestamp> GetInactiveTabKeys(this ConcurrentDictionary<Window, DateTime> documentTabKeys)
         {
-            return
+            //Log.Message($"GetInactiveTabKeys");
+            //var now = DateTime.Now;
+            //foreach (var doc in documentTabKeys)
+            //{
+            //    var span = now - doc.Value;
+            //        if (doc.Key.Document != null)
+            //        {
+            //            Log.Message($"{doc.Key.Document.FullName} with time {span.Minutes} (from {doc.Value.ToShortTimeString()}");
+            //        }
+            //        else
+            //        {
+            //            Log.Message($"null with time {span.Minutes}");
+            //        }
+            //}
+
+
+                return
                 documentTabKeys.Where(x => (DateTime.Now - x.Value) > TimeSpan.FromMinutes(Settings.Default.TabTimeoutMinutes))
                     .Select(x => new WindowTimestamp(x.Key, x.Value))
                     .OrderByDescending(x => DateTime.Now - x.Timestamp);

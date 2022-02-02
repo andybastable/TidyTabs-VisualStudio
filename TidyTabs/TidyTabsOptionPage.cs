@@ -24,6 +24,26 @@ namespace DaveMcKeown.TidyTabs
         private Settings settings;
 
         /// <summary>
+        ///     Gets or sets a value indicating whether tabs should be purged when a file is opened
+        /// </summary>
+        [LocalizedCategory("OptionPage_Behavior")]
+        [LocalizedDisplayName("PurgeOnOpen_DisplayName")]
+        [LocalizedDescription("PurgeOnOpen_Description")]
+        public bool PurgeTabsOnLoad
+        {
+            get
+            {
+                return Settings.PurgeStaleTabsOnOpen;
+            }
+
+            set
+            {
+                Settings.PurgeStaleTabsOnOpen = value;
+                Settings.Save();
+            }
+        }
+
+        /// <summary>
         ///     Gets or sets a value indicating whether tabs should be purged when a file is saved
         /// </summary>
         [LocalizedCategory("OptionPage_Behavior")]
